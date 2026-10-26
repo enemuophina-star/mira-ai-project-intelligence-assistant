@@ -18,6 +18,8 @@ A router sends each request to one specialist agent. The agent answers only from
 
 Plans, risk assessments and reports go through human approval. Clarify replies skip it by design, because they contain no generated claims.
 
+A weekly status report can also run on a schedule: the Mira Weekly workflow (Schedule Trigger, Mira Core, approval email, send) is published with the timezone set to America/Los_Angeles. It was tested end to end with a manual run on 2026-10-26 (see `evidence/7_weekly-*`); the first unattended scheduled run has not yet been observed.
+
 ## Repository layout
 
 ```
@@ -32,11 +34,11 @@ data/         the four project input files and the 12 baseline test inputs
 
 | File | Purpose |
 | --- | --- |
-| `workflows/Mira-Chat-Public.json` | Chat trigger, approval email (Gmail), approved send |
-| `workflows/Mira-Core-Public.json` | Loads the input files, classifies the request, routes it to a specialist, builds the trace and sends it to Langfuse |
-| `workflows/Mira-Call-Public.json` | Shared sub-workflow that calls the model (gpt-4o-mini) and returns text, token counts and latency |
-| `workflows/Mira-Eval-Public.json` | Runs the 12 baseline tests through Mira Core, scores them, and writes results to a Google Sheet |
-| `workflows/Mira-Judge-Calibration-Public.json` | Compares the risk-relevance judge with human ratings |
+| `workflows/mira-chat.json` | Chat trigger, approval email (Gmail), approved send |
+| `workflows/mira-core.json` | Loads the input files, classifies the request, routes it to a specialist, builds the trace and sends it to Langfuse |
+| `workflows/model-call.json` | Shared sub-workflow that calls the model (gpt-4o-mini) and returns text, token counts and latency |
+| `workflows/mira-eval.json` | Runs the 12 baseline tests through Mira Core, scores them, and writes results to a Google Sheet |
+| `workflows/mira-judge-calibration.json` | Compares the risk-relevance judge with human ratings |
 
 ## Setup
 
@@ -93,6 +95,6 @@ Ten limitations (KL-1 to KL-10) are logged with their cause and mitigation in th
 
 ## Links
 
-- Evaluation results sheet (Google Sheet, view only): https://docs.google.com/spreadsheets/d/1n8wEgaFr-cKfZ7ojoTkm2cMLF8vqpaqIBDeNrx1iMcA/edit. 
+- Evaluation results sheet (Google Sheet, view only): ADD-SHARE-LINK-HERE. A downloaded copy is in `docs/Mira_Eval_Results.xlsx`.
 - Requirements: `docs/` holds the BRD and PRD (v1.0, as built), the build writeup, program charter, reflection and failure analysis.
 - Screenshots: `evidence/` (workflow canvases, executed runs, approval emails, Langfuse traces and risk_relevance scores).
