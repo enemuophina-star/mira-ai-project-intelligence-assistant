@@ -18,7 +18,7 @@ A router sends each request to one specialist agent. The agent answers only from
 
 Plans, risk assessments and reports go through human approval. Clarify replies skip it by design, because they contain no generated claims.
 
-A weekly status report can also run on a schedule: the Mira Weekly workflow (`workflows/Mira-Weekly-Public.json`) is published with the timezone set to America/Los_Angeles. It was tested end to end with a manual run on 2026-10-26 (see `evidence/7_weekly-*`); the first unattended scheduled run has not yet been observed.
+A weekly status report can also run on a schedule: the Mira Weekly workflow (`workflows/Mira-Weekly-Public.json`) is published with the timezone set to America/Los_Angeles. It was tested end to end with a manual run, and the first unattended scheduled run fired on Monday 2026-10-26 at 9:00 AM PT (n8n execution #750). The approval email was approved at about 9:09 AM and the approved report was delivered (see `evidence/7_weekly-*`).
 
 ## Repository layout
 
