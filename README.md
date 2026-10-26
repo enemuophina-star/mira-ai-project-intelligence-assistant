@@ -96,6 +96,6 @@ Ten limitations (KL-1 to KL-10) are logged with their cause and mitigation in th
 
 ## Links
 
-- Evaluation results sheet (Google Sheet, view only): [Mira Eval Results](https://docs.google.com/spreadsheets/d/1n8wEgaFr-cKfZ7ojoTkm2cMLF8vqpaqIBDeNrx1iMcA/edit?usp=sharing). A downloaded copy is in `docs/Mira_Eval_Results.xlsx`.
+- Evaluation results sheet (Google Sheet, view only): [Mira Eval Results](https://docs.google.com/spreadsheets/d/1n8wEgaFr-cKfZ7ojoTkm2cMLF8vqpaqIBDeNrx1iMcA/edit?usp=sharing). A downloaded copy is in `docs/Mira_ Eval_ Results.xlsx.`.
 - Requirements: `docs/` holds the BRD and PRD (v1.0, as built), the build writeup, program charter, reflection and failure analysis.
 - Screenshots: `evidence/` (workflow canvases, executed runs, approval emails, Langfuse traces and risk_relevance scores).
