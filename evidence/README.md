@@ -1,4 +1,5 @@
 ## 7. Weekly scheduled run (Mira Weekly)
+Screenshots demonstrating the Mira AI Project Intelligence Assistant workflows, executions, evaluation results and observability.
 
 - `7_weekly-canvas_mira-weekly.png`: Schedule Trigger, Run Mira Core, approval email and send, all nodes passing.
 - `7_weekly-approved-output-email_1.png` and `_2.png`: the approved weekly status report as delivered (top and bottom).
