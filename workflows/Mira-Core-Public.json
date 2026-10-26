@@ -1,0 +1,1331 @@
+{
+  "name": "Mira Core",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "request"
+            },
+            {
+              "name": "testId"
+            },
+            {
+              "name": "mode"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -1296,
+        16
+      ],
+      "id": "ac8c0294-73f5-4188-94b0-abbda1ea1ff4",
+      "name": "Core Trigger"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "95f00675-53b4-4634-8d6e-b6a66055e66a",
+              "name": "request",
+              "value": "={{ $json.request }}",
+              "type": "string"
+            },
+            {
+              "id": "4bdde80e-c142-406c-9a4d-e72bf5738c46",
+              "name": "testId",
+              "value": "={{ $json.testId }}",
+              "type": "string"
+            },
+            {
+              "id": "1f90f5e6-f451-45aa-94be-182c51a68d10",
+              "name": "mode",
+              "value": "={{ $json.mode }}",
+              "type": "string"
+            },
+            {
+              "id": "d76d81cb-ae7b-441a-a69c-9d259072943e",
+              "name": "asOfDate",
+              "value": "2026-04-20",
+              "type": "string"
+            },
+            {
+              "id": "a8a20d12-46ca-4eb5-bde0-6e625e4a1fa2",
+              "name": "atRiskDays",
+              "value": 14,
+              "type": "number"
+            },
+            {
+              "id": "745f74b9-eefa-4ee4-8ec4-9b93e12c069b",
+              "name": "watchDays",
+              "value": 7,
+              "type": "number"
+            },
+            {
+              "id": "5e7b9e4e-9a18-4ebe-aa12-33b89e5f998d",
+              "name": "milestoneDays",
+              "value": 14,
+              "type": "number"
+            },
+            {
+              "id": "ec2df0a4-32ad-4240-97d2-bd4620b41ba8",
+              "name": "model",
+              "value": "gpt-4o-mini",
+              "type": "string"
+            },
+            {
+              "id": "5319388f-dc88-4d52-96f0-7e4e3bd4d6df",
+              "name": "t0",
+              "value": "={{ Date.now() }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -1072,
+        16
+      ],
+      "id": "98dc0f0e-00d4-4933-8e40-7a1f894ff5b2",
+      "name": "Config"
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "returnAll": true,
+        "filter": {
+          "folderId": {
+            "__rl": true,
+            "value": "REPLACE_WITH_YOUR_GOOGLE_DRIVE_FOLDER_ID",
+            "mode": "list",
+            "cachedResultName": "Mira Input"
+            
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -832,
+        16
+      ],
+      "id": "4c21c194-87ff-4284-a9a7-32b20b134f41",
+      "name": "Find Inputs",
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "tyiarpJh2wMRn0QQ",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -592,
+        16
+      ],
+      "id": "ffa7862c-9c92-40a4-a794-529ca42240dc",
+      "name": "Download",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "tyiarpJh2wMRn0QQ",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const c = $('Config').first().json;\nconst day = 86400000;\nconst toDate = s => new Date(s + 'T00:00:00Z');\nconst asOf = toDate(c.asOfDate);\n\nfunction parseCsv(text) {\n  const rows = []; let row = [], cur = '', q = false;\n  for (let i = 0; i < text.length; i++) {\n    const ch = text[i];\n    if (q) { if (ch === '\"' && text[i + 1] === '\"') { cur += '\"'; i++; } else if (ch === '\"') q = false; else cur += ch; }\n    else if (ch === '\"') q = true;\n    else if (ch === ',') { row.push(cur); cur = ''; }\n    else if (ch === '\\n') { row.push(cur); rows.push(row); row = []; cur = ''; }\n    else if (ch !== '\\r') cur += ch;\n  }\n  if (cur || row.length) { row.push(cur); rows.push(row); }\n  const [head, ...body] = rows;\n  return body.filter(r => r.length > 1).map(r => Object.fromEntries(head.map((h, i) => [h.trim(), (r[i] || '').trim()])));\n}\n\nconst files = {};\nfor (let i = 0; i < items.length; i++) {\n  const buf = await this.helpers.getBinaryDataBuffer(i, 'data');\n  files[items[i].binary.data.fileName] = buf.toString('utf8');\n}\n\nconst tasks = parseCsv(files['sample_task_board.csv']);\nconst timeline = parseCsv(files['project_timeline.csv']);\nconst risks = parseCsv(files['project_risks.csv']);\n\nfor (const t of tasks) {\n  t.days_to_due = Math.round((toDate(t.due_date) - asOf) / day);\n  t.flag = t.status === 'Blocked' ? 'Blocked'\n    : t.status === 'Done' ? ''\n    : t.days_to_due < 0 ? 'Overdue'\n    : (t.status === 'To Do' && t.days_to_due <= c.atRiskDays) ? 'At risk'\n    : (t.status === 'In Progress' && t.days_to_due <= c.watchDays) ? 'Watch' : '';\n}\n\nconst labels = { 1: ['Planning'], 2: ['Analysis'], 3: ['Use Cases'], 4: ['Data Prep', 'Model Dev'], 5: ['Pilot'], 6: ['Evaluation'], 7: ['Deployment'], 8: ['Monitoring'] };\nconst phases = timeline.map(p => {\n  const due = tasks.filter(t => labels[p.phase].includes(t.labels)).map(t => t.due_date).sort().at(-1);\n  const ms = (toDate(due) - asOf) / day;\n  return { phase: Number(p.phase), name: p.phase_name, weeks: p.start_week + '-' + p.end_week, activities: p.key_activities, milestones: p.milestones_deliverables, end_date: due, in_window: ms > 0 && ms <= c.milestoneDays };\n});\n\nreturn [{ json: { asOfDate: c.asOfDate, description: files['project_description.txt'], phases, risks, tasks } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -384,
+        16
+      ],
+      "id": "e29d03c3-0f17-42ac-ae0e-5dd6673b2d67",
+      "name": "Data Loader"
+    },
+    {
+      "parameters": {
+        "jsCode": "const c = $('Config').first().json;\nconst system = `You route requests for Mira, a project assistant for the ABCDE Ltd. AI Adoption Project. Return only JSON with the keys intent, sufficient_detail, sprint, top_n, format, focus.\nintent: plan (project plans), risk (risk assessments or top risks), status (weekly status reports, task counts, progress summaries or sprint update emails), milestones (blocked, at-risk or overdue tasks, deadlines, or upcoming milestones), other (anything else).\nsufficient_detail: Always true when the request mentions the ABCDE Ltd. project, the AI Adoption Project, the provided project description, the task board, the timeline, the risk data or a sprint. Mira always has the ABCDE Ltd. AI Adoption Project files loaded (description, timeline, risks, task board). Set true when the request asks about that project or anything those files answer: its plan, risks, tasks, sprints, blocked or overdue items, task counts, milestones, status or updates. Set false when the request is about a new or unnamed project with no details, for example 'Plan a new mobile app', 'Assess risks for my upcoming project' or 'Plan a 3-week project, no other details', or when it states its own opinion in place of data, for example 'Write a status report: everything is fine'.\nsprint: the sprint number if named, else null. top_n: the number if the request asks for the top N risks, else null.\nformat (status only): report for a weekly status report, summary for task counts, email for an update email. focus (milestones only): blocked_at_risk for blocked or at-risk tasks, upcoming_milestones for milestones coming up. Use null for format unless intent is status, and null for focus unless intent is milestones.`;\nreturn [{ json: { model: c.model, system, user: c.request, jsonMode: true, t0: Date.now() } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -176,
+        16
+      ],
+      "id": "6954e668-e12c-46d0-9cf4-18516a2e32fb",
+      "name": "Orchestrator prompt"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "8q6hfI2tcPoQwkCH",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/8q6hfI2tcPoQwkCH",
+          "cachedResultName": "Model Call"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "jsonMode": "={{ $json.jsonMode }}",
+            "model": "={{ $json.model }}",
+            "system": "={{ $json.system }}",
+            "user": "={{ $json.user }}",
+            "t0": "={{ $json.t0 }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "model",
+              "displayName": "model",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "system",
+              "displayName": "system",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "user",
+              "displayName": "user",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "jsonMode",
+              "displayName": "jsonMode",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "boolean"
+            },
+            {
+              "id": "t0",
+              "displayName": "t0",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.4,
+      "position": [
+        32,
+        16
+      ],
+      "id": "77239bad-6bc5-4d0e-a22a-2625a4e59278",
+      "name": "Orchestrator call"
+    },
+    {
+      "parameters": {
+        "jsCode": "let r;\ntry { r = JSON.parse($json.text); } catch (e) { r = { intent: 'other', sufficient_detail: false }; }\nif (r.focus) r.intent = 'milestones';\nconst ok = r.sufficient_detail === true && ['plan', 'risk', 'status', 'milestones'].includes(r.intent);\nreturn [{ json: { ...r, route: ok ? r.intent : 'clarify' } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        256,
+        16
+      ],
+      "id": "2abad973-de54-4786-ad3b-5d34b236f3c9",
+      "name": "Parse intent"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "clarify",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "f52136cc-cc67-4a57-bb44-4c042d5ac473"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "22649d4c-5077-41d3-b768-9dbcfdc87d7e",
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "plan",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "1a1b48b9-5fff-4173-80d3-9b1ded45ef57",
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "risk",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "26068629-da1b-4394-99cc-d0b0ab6c07f6",
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "status",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "d646bb3d-73c7-4700-ac24-3b3190abce97",
+                    "leftValue": "={{ $json.route }}",
+                    "rightValue": "milestones",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": 0
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        448,
+        -32
+      ],
+      "id": "c0ba1fd3-92f2-42c8-8780-53a79fa393ee",
+      "name": "Router"
+    },
+    {
+      "parameters": {
+        "jsCode": "const p = $('Parse intent').first().json;\nconst ask = {\n  plan: 'To build a plan I need: the project scope, the goals, the deliverables, the timeline and the team size.',\n  risk: 'To assess risks I need: the project description or scope, the timeline, the domain or technology, and the team or stakeholders.',\n  status: 'No task data is available for this request, so I cannot report status. Please share the task board export (CSV) or a task list with statuses.',\n  milestones: 'No timeline or task data is available for this request. Please share the project timeline or task board.',\n};\nconst text = 'This request does not have enough detail. ' + (ask[p.intent] || 'Please tell me which project and which output you need (a plan, a risk assessment or a status report), and share the scope, goals, deliverables, timeline and team size.');\nreturn [{ json: { text } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        -336
+      ],
+      "id": "4eb51219-df6c-40fd-88cf-6cb42dc366dc",
+      "name": "Clarify"
+    },
+    {
+      "parameters": {
+        "jsCode": "const f = $('Data Loader').first().json;\nconst p = $('Parse intent').first().json;\nconst tasks = p.sprint ? f.tasks.filter(t => t.sprint === 'Sprint ' + p.sprint) : f.tasks;\nconst counts = { Done: 0, 'In Progress': 0, 'To Do': 0, Blocked: 0 };\nfor (const t of tasks) counts[t.status] = (counts[t.status] || 0) + 1;\nconst countsLine = 'Done ' + counts.Done + ', In Progress ' + counts['In Progress'] + ', To Do ' + counts['To Do'] + ', Blocked ' + counts.Blocked + ', Total ' + tasks.length;\nreturn [{ json: { scope: p.sprint ? 'Sprint ' + p.sprint : 'All sprints', tasks, counts, countsLine, total: tasks.length, upcoming: f.phases.filter(x => x.in_window) } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        784,
+        160
+      ],
+      "id": "a6c439c3-7de4-458f-9328-0d212ee83e0d",
+      "name": "Status facts"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f5175004-5813-4e7f-83fb-c9a6e6b986d2",
+              "name": "model",
+              "value": "={{ $('Config').first().json.model }}",
+              "type": "string"
+            },
+            {
+              "id": "07676b1a-2444-438e-9aeb-a0013d2e13b7",
+              "name": "system",
+              "value": "=ROLE: You are the Status Reporter for Mira, the project assistant of Nexora Pvt. Ltd. You report progress on the ABCDE Ltd. AI Adoption Project from its task board.\n\nINPUT:\nAS-OF DATE: {{ $('Config').first().json.asOfDate }}\nSCOPE: {{ $json.scope }}\nTASKS: {{ JSON.stringify($json.tasks) }}\nCOUNTS LINE: {{ $json.countsLine }}\nMILESTONES DUE SOON: {{ JSON.stringify($json.upcoming) }}\nFORMAT: {{ $('Parse intent').first().json.format || 'report' }}\n\nOUTPUT: Depends on FORMAT. report: a weekly status report with the as-of date, overall health with reasons, counts by status, tasks grouped by status (ID and name), blocked items, upcoming milestones, and risks or actions needed. summary: one sentence that starts with the COUNTS LINE exactly as given, then one sentence naming any Blocked tasks by ID and name. email: a sprint update email with a subject line, a greeting, progress by task, next steps for open tasks only, and a sign-off.\n\nRULES:\n1. Use task names and IDs exactly as they appear in TASKS.\n2. Use the COUNTS LINE as given. Never recount, add up or estimate numbers.\n3. Give overall health as Green, Amber or Red with reasons taken from TASKS. A Blocked task or an overdue task makes it at least Amber.\n4. Never invent tasks, owners, dates or progress percentages.\n5. For an email, mention only the tasks in TASKS, and say plainly when a task is still open.\n6. State the as-of date.\n\nVAGUE INPUT RULE: If the request gives its own statement in place of asking about the project's tasks (for example, 'everything is going fine'), or is about a different project, do not write a report. Reply with one line only: INSUFFICIENT DETAIL: followed by what is missing (the task board export as a CSV, or a task list with statuses).",
+              "type": "string"
+            },
+            {
+              "id": "477618c0-c52e-414e-be8a-5bda2c8f0ae8",
+              "name": "user",
+              "value": "={{ $('Config').first().json.request }}",
+              "type": "string"
+            },
+            {
+              "id": "c874be64-3c4b-443b-ada7-00637f96a652",
+              "name": "jsonMode",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "41d63d50-9f16-4a91-8615-307eff505479",
+              "name": "t0",
+              "value": "={{ Date.now() }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1008,
+        176
+      ],
+      "id": "911ece80-a5bd-45b3-b46b-7401cb56e5e0",
+      "name": "Status prompt"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "8q6hfI2tcPoQwkCH",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/8q6hfI2tcPoQwkCH",
+          "cachedResultName": "Model Call"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "jsonMode": "={{ $json.jsonMode }}",
+            "model": "={{ $json.model }}",
+            "system": "={{ $json.system }}",
+            "user": "={{ $json.user }}",
+            "t0": "={{ $json.t0 }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "model",
+              "displayName": "model",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "system",
+              "displayName": "system",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "user",
+              "displayName": "user",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "jsonMode",
+              "displayName": "jsonMode",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "boolean"
+            },
+            {
+              "id": "t0",
+              "displayName": "t0",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.4,
+      "position": [
+        1168,
+        128
+      ],
+      "id": "18e6845a-ed5c-4cde-84fb-4ff2f83b8797",
+      "name": "Status call"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9cdbbd65-d27a-4a20-83c1-988f51bbd17b",
+              "name": "model",
+              "value": "={{ $('Config').first().json.model }}",
+              "type": "string"
+            },
+            {
+              "id": "40ed4e50-509a-4943-9fef-f8b5752a52ca",
+              "name": "system",
+              "value": "=ROLE: You are the Planner for Mira, the project assistant of Nexora Pvt. Ltd. You write project plans for the ABCDE Ltd. AI Adoption Project.\n\nINPUT:\nPROJECT DESCRIPTION: {{ $('Data Loader').first().json.description }}\nPHASES: {{ JSON.stringify($('Data Loader').first().json.phases) }}\n\nOUTPUT: A plan in Markdown with these sections: Project summary; Goals; Phases table (phase, weeks, key activities, milestones and deliverables, end date); Timeline overview; Assumptions and gaps; Sources.\n\nRULES:\n1. Use the phase names, week ranges, milestones and end dates exactly as given in PHASES.\n2. List only goals that are stated in the PROJECT DESCRIPTION.\n3. Never invent goals, budgets, team sizes, names or dates.\n4. Label anything that is not in the INPUT as 'Proposed, not in source'.\n5. Write in plain, professional language.\n\nVAGUE INPUT RULE: If the request is about a different or unnamed project, or gives too little detail to build a plan from the INPUT, do not write a plan. Reply with one line only: INSUFFICIENT DETAIL: followed by what is missing (scope, goals, deliverables, timeline, team size).",
+              "type": "string"
+            },
+            {
+              "id": "4a716e10-0e6d-4fe3-826e-119e71bdd3a6",
+              "name": "user",
+              "value": "={{ $('Config').first().json.request }}",
+              "type": "string"
+            },
+            {
+              "id": "2e82b3a0-86d7-488c-914e-75a8cb12fa2a",
+              "name": "jsonMode",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "76d1c5d7-db17-4bd5-b45b-08bf6148b3d2",
+              "name": "t0",
+              "value": "={{ Date.now() }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        816,
+        -176
+      ],
+      "id": "6db65acc-644f-4ad5-8d5c-37052ea5371f",
+      "name": "Planner prompt"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "8q6hfI2tcPoQwkCH",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/8q6hfI2tcPoQwkCH",
+          "cachedResultName": "Model Call"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "jsonMode": "={{ $json.jsonMode }}",
+            "model": "={{ $json.model }}",
+            "system": "={{ $json.system }}",
+            "user": "={{ $json.user }}",
+            "t0": "={{ $json.t0 }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "model",
+              "displayName": "model",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "system",
+              "displayName": "system",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "user",
+              "displayName": "user",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "jsonMode",
+              "displayName": "jsonMode",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "boolean",
+              "removed": false
+            },
+            {
+              "id": "t0",
+              "displayName": "t0",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.4,
+      "position": [
+        992,
+        -176
+      ],
+      "id": "5159fe56-97c7-4798-b8f3-64fb00cc8d7a",
+      "name": "Planner call"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "7b5de6ba-2c28-44b2-9db5-8d1d21947a53",
+              "name": "model",
+              "value": "={{ $('Config').first().json.model }}",
+              "type": "string"
+            },
+            {
+              "id": "a1fe0fbc-e767-4f0b-be8e-48fddc8971e9",
+              "name": "system",
+              "value": "=ROLE: You are the Risk Assessor for Mira, the project assistant of Nexora Pvt. Ltd. You assess risks for the ABCDE Ltd. AI Adoption Project.\n\nINPUT:\nRISKS: {{ JSON.stringify($('Data Loader').first().json.risks) }}\nTASKS: {{ JSON.stringify($('Data Loader').first().json.tasks.map(t => ({ task_id: t.task_id, task_name: t.task_name, status: t.status, labels: t.labels }))) }}\nTOP N: {{ $('Parse intent').first().json.top_n || 'not set' }}\n\nOUTPUT: Markdown. If TOP N is set, a ranked list of exactly that many risks, each with its risk_id, category, impact, mitigation and a one-sentence reason drawn from TASKS. If TOP N is not set, a table with the columns Risk ID, Category, Risk, Impact and Mitigation (one row per risk, copied from RISKS), then Top risks and why, then Sources.\n\nRULES:\n1. Use only the risks in RISKS and cite each one by its risk_id. Valid risk IDs are R01 to R10. Task IDs such as T024 are never risk IDs.\n2. Copy the category, impact and mitigation exactly as given.\n3. When ranking, prefer risks that are supported by a Blocked, In Progress or overdue task in TASKS, and give a reason that cites that task by ID and name. Never give a reason that is not in TASKS.\n4. Any extra risk must be labeled 'AI suggestion' and must relate to logistics or AI adoption. Never add generic risks such as office relocation.\n5. When TOP N is not set, cover all risks in RISKS.\n\nVAGUE INPUT RULE: If the request is about a different or unnamed project, or gives no project detail to assess against the INPUT, do not list any risk. Reply with one line only: INSUFFICIENT DETAIL: followed by what is missing (project description, timeline, domain or technology, team or stakeholders).",
+              "type": "string"
+            },
+            {
+              "id": "d9e8dc10-74a6-4bfc-85da-d3ea09291291",
+              "name": "user",
+              "value": "={{ $('Config').first().json.request }}",
+              "type": "string"
+            },
+            {
+              "id": "1b16efb5-4301-4c06-b4ad-df42906862fc",
+              "name": "jsonMode",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "7f5d2793-a651-41aa-949e-195acc841247",
+              "name": "t0",
+              "value": "={{ Date.now() }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        800,
+        -16
+      ],
+      "id": "904bb73b-b695-4f49-b93d-f3ed77345ad0",
+      "name": "Risk prompt"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "8q6hfI2tcPoQwkCH",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/8q6hfI2tcPoQwkCH",
+          "cachedResultName": "Model Call"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "jsonMode": "={{ $json.jsonMode }}",
+            "model": "={{ $json.model }}",
+            "system": "={{ $json.system }}",
+            "user": "={{ $json.user }}",
+            "t0": "={{ $json.t0 }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "model",
+              "displayName": "model",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "system",
+              "displayName": "system",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "user",
+              "displayName": "user",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "jsonMode",
+              "displayName": "jsonMode",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "boolean",
+              "removed": false
+            },
+            {
+              "id": "t0",
+              "displayName": "t0",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.4,
+      "position": [
+        1008,
+        -16
+      ],
+      "id": "6e1efcbb-74b6-4172-8f26-d51b79796995",
+      "name": "Risk call"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2c926ce5-3bab-4e26-a629-b2930e6da367",
+              "name": "model",
+              "value": "={{ $('Config').first().json.model }}",
+              "type": "string"
+            },
+            {
+              "id": "2dd6a4d7-1aa3-4b8a-8afb-a870f252d82d",
+              "name": "system",
+              "value": "=ROLE: You are the Milestone Tracker for Mira, the project assistant of Nexora Pvt. Ltd. You find blocked and at-risk tasks and upcoming milestones for the ABCDE Ltd. AI Adoption Project.\n\nINPUT:\nAS-OF DATE: {{ $('Config').first().json.asOfDate }}\nFOCUS: {{ $('Parse intent').first().json.focus || 'upcoming_milestones' }}\nFLAGGED TASKS: {{ JSON.stringify($('Data Loader').first().json.tasks.filter(t => t.flag)) }}\nPHASES: {{ JSON.stringify($('Data Loader').first().json.phases) }}\n\nOUTPUT: If FOCUS is blocked_at_risk: a list of the flagged tasks, each with task ID, name, status, due date, flag, the reason and a suggested action. If FOCUS is upcoming_milestones: every deliverable listed in the milestones field of the phases where in_window is true (phase, deliverable, due date), then the next milestone after the window.\n\nRULES:\n1. Use only FLAGGED TASKS and PHASES.\n2. Order the flagged tasks Blocked, then Overdue, then At risk, then Watch.\n3. Give every flag a reason taken from the data (status, due date, days_to_due).\n4. For milestones, list only phases where in_window is true. Name every deliverable in that phase's milestones field as its own item and never drop one. Then name the next phase end date after the window as the next milestone.\n5. Never add tasks, milestones or dates that are not in the INPUT. If nothing qualifies, say so.\n\nVAGUE INPUT RULE: If the request is about a different or unnamed project, or gives nothing to check against the INPUT, do not produce a list. Reply with one line only: INSUFFICIENT DETAIL: followed by what is missing (the project timeline or the task board).\nList only phases where in_window is true under \"Milestones in the next 2 weeks\". If the next phase falls outside the window, put it on a separate final line that starts with \"Next milestone after this window:\". Never list it as one of the numbered milestones.",
+              "type": "string"
+            },
+            {
+              "id": "1fa3a592-e5cb-4b55-bb2e-26e1d22adcff",
+              "name": "user",
+              "value": "={{ $('Config').first().json.request }}",
+              "type": "string"
+            },
+            {
+              "id": "a11d35ad-4f24-401e-a4a0-bd59409ec808",
+              "name": "jsonMode",
+              "value": false,
+              "type": "boolean"
+            },
+            {
+              "id": "1df8bef4-a67b-4256-bb72-ab7aefbf3583",
+              "name": "t0",
+              "value": "={{ Date.now() }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        768,
+        336
+      ],
+      "id": "b547f124-7fc8-40fb-960b-8a6bb48c2e4a",
+      "name": "Milestone prompt"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "8q6hfI2tcPoQwkCH",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/8q6hfI2tcPoQwkCH",
+          "cachedResultName": "Model Call"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "jsonMode": "={{ $json.jsonMode }}",
+            "model": "={{ $json.model }}",
+            "system": "={{ $json.system }}",
+            "user": "={{ $json.user }}",
+            "t0": "={{ $json.t0 }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "model",
+              "displayName": "model",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "system",
+              "displayName": "system",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "user",
+              "displayName": "user",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "jsonMode",
+              "displayName": "jsonMode",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "boolean",
+              "removed": false
+            },
+            {
+              "id": "t0",
+              "displayName": "t0",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.4,
+      "position": [
+        992,
+        336
+      ],
+      "id": "002a500e-eece-45d8-b1a9-7f9560d475e1",
+      "name": "Milestone call"
+    },
+    {
+      "parameters": {
+        "jsCode": "const p = $('Parse intent').first().json;\nconst c = $('Config').first().json;\nconst text = $json.text || '';\nconst refused = /^INSUFFICIENT DETAIL/i.test(text.trim());\nconst route = refused ? 'clarify' : p.route;\nconst output = refused ? 'This request does not have enough detail. ' + text.replace(/^INSUFFICIENT DETAIL:?\\s*/i, 'Please provide: ')\n  : route === 'clarify' ? text\n  : text + `\\n\\nAs-of date: ${c.asOfDate}. Sources: project_description.txt, project_timeline.csv, project_risks.csv, sample_task_board.csv.`;\nreturn [{ json: { output, route, requiresApproval: route !== 'clarify', model: $json.model, usage: $json.usage, latencyMs: $json.latencyMs } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1424,
+        32
+      ],
+      "id": "c841ff75-6094-442c-baa8-7a5a92fe020e",
+      "name": "Finish"
+    },
+    {
+      "parameters": {
+        "jsCode": "const f = $json;\nconst c = $('Config').first().json;\nconst o = $('Orchestrator call').first().json;\nconst hex = n => Array.from({ length: n }, () => Math.floor(Math.random() * 16).toString(16)).join('');\nconst ns = ms => String(Math.round(ms)) + '000000';\nconst str = (k, v) => ({ key: k, value: { stringValue: String(v) } });\nconst traceId = hex(32), rootId = hex(16);\nconst tags = { key: 'langfuse.trace.tags', value: { arrayValue: { values: [{ stringValue: c.testId || 'chat' }, { stringValue: c.model }] } } };\nconst shared = [str('langfuse.trace.name', 'mira-request'), tags, str('langfuse.trace.metadata.test_id', c.testId || ''), str('langfuse.trace.metadata.route', f.route), str('langfuse.trace.metadata.model', c.model), str('langfuse.trace.metadata.as_of_date', c.asOfDate)];\nconst span = (id, parent, name, start, stop, attrs) => ({ traceId, spanId: id, ...(parent ? { parentSpanId: parent } : {}), name, kind: 1, startTimeUnixNano: ns(start), endTimeUnixNano: ns(stop), attributes: [...shared, ...attrs] });\nconst gen = (call, input, output) => [str('langfuse.observation.type', 'generation'), str('langfuse.observation.model.name', call.model), str('langfuse.observation.input', input), str('langfuse.observation.output', output), str('langfuse.observation.usage_details', JSON.stringify({ input: call.usage.prompt_tokens, output: call.usage.completion_tokens, total: call.usage.total_tokens }))];\nconst end = Date.now(), start = Number(c.t0);\nconst branchStart = end - (f.latencyMs || 0);\nconst spans = [\n  span(rootId, null, 'mira-request', start, end, [str('langfuse.observation.type', 'span'), str('langfuse.observation.input', c.request), str('langfuse.observation.output', f.output)]),\n  span(hex(16), rootId, 'orchestrator', branchStart - o.latencyMs, branchStart, gen(o, c.request, $('Parse intent').first().json.route)),\n];\nif (f.usage) spans.push(span(hex(16), rootId, f.route, branchStart, end, gen(f, c.request, f.output)));\nconst payload = { resourceSpans: [{ resource: { attributes: [str('service.name', 'mira-n8n')] }, scopeSpans: [{ scope: { name: 'mira' }, spans }] }] };\nreturn [{ json: { ...f, testId: c.testId, traceId, rootId, payload } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1584,
+        32
+      ],
+      "id": "0a1d0f23-8e38-44d7-99f9-75abc3f5470f",
+      "name": "Build trace"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://us.cloud.langfuse.com/api/public/otel/v1/traces",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-langfuse-ingestion-version",
+              "value": "4"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.payload) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1776,
+        32
+      ],
+      "id": "e7e7301f-d991-4cda-bcd8-f8276be10e58",
+      "name": "Send to Langfuse",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "RD5pRbzAE6di5Iw6",
+          "name": "Langfuse"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const t = $('Build trace').first().json;\nreturn [{ json: { output: t.output, route: t.route, requiresApproval: t.requiresApproval, testId: t.testId, traceId: t.traceId, rootId: t.rootId, model: t.model, latencyMs: t.latencyMs, usage: t.usage } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2000,
+        32
+      ],
+      "id": "a70206ae-3382-45f0-b2fb-8a53bb15485c",
+      "name": "Return to caller"
+    }
+  ],
+  "pinData": {
+    "Core Trigger": [
+      {
+        "json": {
+          "request": "What milestones are coming up in the next 2 weeks based on the timeline?",
+          "testId": "T11",
+          "mode": "eval"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Core Trigger": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Find Inputs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Inputs": {
+      "main": [
+        [
+          {
+            "node": "Download",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download": {
+      "main": [
+        [
+          {
+            "node": "Data Loader",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Data Loader": {
+      "main": [
+        [
+          {
+            "node": "Orchestrator prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Orchestrator prompt": {
+      "main": [
+        [
+          {
+            "node": "Orchestrator call",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Orchestrator call": {
+      "main": [
+        [
+          {
+            "node": "Parse intent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse intent": {
+      "main": [
+        [
+          {
+            "node": "Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Router": {
+      "main": [
+        [
+          {
+            "node": "Clarify",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Planner prompt",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Risk prompt",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Status facts",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Milestone prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Status facts": {
+      "main": [
+        [
+          {
+            "node": "Status prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Status prompt": {
+      "main": [
+        [
+          {
+            "node": "Status call",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Planner prompt": {
+      "main": [
+        [
+          {
+            "node": "Planner call",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Risk prompt": {
+      "main": [
+        [
+          {
+            "node": "Risk call",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Milestone prompt": {
+      "main": [
+        [
+          {
+            "node": "Milestone call",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Milestone call": {
+      "main": [
+        [
+          {
+            "node": "Finish",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Planner call": {
+      "main": [
+        [
+          {
+            "node": "Finish",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Risk call": {
+      "main": [
+        [
+          {
+            "node": "Finish",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clarify": {
+      "main": [
+        [
+          {
+            "node": "Finish",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Status call": {
+      "main": [
+        [
+          {
+            "node": "Finish",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Finish": {
+      "main": [
+        [
+          {
+            "node": "Build trace",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build trace": {
+      "main": [
+        [
+          {
+            "node": "Send to Langfuse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send to Langfuse": {
+      "main": [
+        [
+          {
+            "node": "Return to caller",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "c91b2cdb-e92f-4079-9eb3-17bad8a526a3",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ff47d3dfb5903afe64925e25118437137227e67c93aba0b5b2688bd40ccd4c9a"
+  },
+  "nodeGroups": [],
+  "id": "DvxLaeTVCZByDIKB",
+  "tags": []
+}

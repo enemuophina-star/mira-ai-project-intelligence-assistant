@@ -1,0 +1,129 @@
+{
+  "name": "Model Call",
+  "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: $json.model, temperature: 0, messages: [{ role: 'system', content: $json.system }, { role: 'user', content: $json.user }], ...($json.jsonMode ? { response_format: { type: 'json_object' } } : {}) }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        224,
+        0
+      ],
+      "id": "97b9ca74-dd15-4a61-8f13-2bc3ca1292a2",
+      "name": "Open AI",
+      "credentials": {
+        "openAiApi": {
+          "id": "2tDSaNy6cDBZLqTT",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "model"
+            },
+            {
+              "name": "system"
+            },
+            {
+              "name": "user"
+            },
+            {
+              "name": "jsonMode",
+              "type": "boolean"
+            },
+            {
+              "name": "t0",
+              "type": "number"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "24b2230b-3184-42c0-af13-16eb22c61ba4",
+      "name": "Call Model Trigger"
+    },
+    {
+      "parameters": {
+        "jsCode": "const r = $json;\nreturn [{ json: { text: r.choices[0].message.content, model: r.model, usage: r.usage, latencyMs: Date.now() - Number($('Call Model Trigger').first().json.t0) } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        0
+      ],
+      "id": "8d0e56e0-493a-4982-8d5e-58c534cd2aab",
+      "name": "Shape result"
+    }
+  ],
+  "pinData": {
+    "Call Model Trigger": [
+      {
+        "json": {
+          "model": "gpt-4o-mini",
+          "system": "You are helpful",
+          "user": "Say hi",
+          "jsonMode": false,
+          "t0": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Call Model Trigger": {
+      "main": [
+        [
+          {
+            "node": "Open AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Open AI": {
+      "main": [
+        [
+          {
+            "node": "Shape result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "4029f1e6-22d0-47d0-ac9b-6e1539237f9e",
+  "meta": {
+    "instanceId": "ff47d3dfb5903afe64925e25118437137227e67c93aba0b5b2688bd40ccd4c9a"
+  },
+  "nodeGroups": [],
+  "id": "8q6hfI2tcPoQwkCH",
+  "tags": []
+}

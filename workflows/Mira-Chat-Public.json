@@ -1,0 +1,408 @@
+{
+  "name": "Mira Chat",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {
+          "responseMode": "responseNodes"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        -400,
+        0
+      ],
+      "id": "88cb60c5-448e-422d-ae37-c8f10ba6be54",
+      "name": "Chat Trigger",
+      "webhookId": "43f216da-5713-4e88-bfed-6d98ab80ce27"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "DvxLaeTVCZByDIKB",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/DvxLaeTVCZByDIKB",
+          "cachedResultName": "Mira Core"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "request": "={{ $json.chatInput }}",
+            "mode": "chat"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "request",
+              "displayName": "request",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "testId",
+              "displayName": "testId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "mode",
+              "displayName": "mode",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.4,
+      "position": [
+        -160,
+        0
+      ],
+      "id": "053881ec-ba31-4a6b-8c0d-0728c19683dc",
+      "name": "Run Mira Core"
+    },
+    {
+      "parameters": {
+        "message": "={{ $json.requiresApproval ? 'DRAFT, pending PM approval. ' : '' }}{{ $json.output }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chat",
+      "typeVersion": 1.3,
+      "position": [
+        80,
+        0
+      ],
+      "id": "a6ae525c-e9cf-4551-ad48-103cb1b37c45",
+      "name": "Show Draft",
+      "webhookId": "3ecd3bd5-4510-4ed0-89c0-1e61a3db30f1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "bfa48a27-9494-4254-81be-7c5143aeb3f1",
+              "leftValue": "={{ $('Run Mira Core').first().json.requiresApproval }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "a85f4d41-6f18-4111-b230-3d0812edae81",
+              "leftValue": "",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        304,
+        0
+      ],
+      "id": "96f20726-f369-4fa3-8268-d021b033f57f",
+      "name": "Needs approval?"
+    },
+    {
+      "parameters": {
+        "operation": "sendAndWait",
+        "sendTo": "YOUR_EMAIL@example.com",
+        "subject": "Mira draft for approval",
+        "message": "={{ $('Run Mira Core').first().json.output }}",
+        "responseType": "customForm",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Decision",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Approve"
+                  },
+                  {
+                    "option": "Reject"
+                  },
+                  {
+                    "option": "Edit and approve"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Reason"
+            },
+            {
+              "fieldLabel": "Edited text",
+              "fieldType": "textarea"
+            }
+          ]
+        },
+        "options": {
+          "limitWaitTime": {
+            "values": {
+              "resumeAmount": 24
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        528,
+        -96
+      ],
+      "id": "1871ad85-c51c-43f1-be4d-6a35ac711c06",
+      "name": "Email for approval",
+      "webhookId": "22e01195-d12f-40f1-aaa6-91b7da69bd73",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "V3Ot9NYA4RpYiM0N",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "43c5fc5c-43d2-4bd3-a772-41816867c11b",
+              "leftValue": "={{ $json.data.Decision }}",
+              "rightValue": "Reject",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        752,
+        -96
+      ],
+      "id": "e4bb3a3d-3671-44a6-8f8c-0a10c031282c",
+      "name": "Rejected?"
+    },
+    {
+      "parameters": {
+        "sendTo": "YOUR_EMAIL@example.com",
+        "subject": "Mira approved output",
+        "message": "={{ $('To HTML').first().json.html }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1216,
+        -32
+      ],
+      "id": "68ed7ae5-77b6-4c92-97cd-472a5bec7538",
+      "name": "Send approved output",
+      "webhookId": "4878bbbf-8587-4f7f-98f1-7cf76c0a1e85",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "V3Ot9NYA4RpYiM0N",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c0c9e1a9-9e29-4567-aa7f-be0a082318dd",
+              "name": "decision",
+              "value": "={{ $json.data.Decision }}",
+              "type": "string"
+            },
+            {
+              "id": "38dcf0f6-1b21-4bde-a748-fa65202234fe",
+              "name": "reason",
+              "value": "={{ $json.data.Reason }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1200,
+        -192
+      ],
+      "id": "618e9116-c8a6-4b2e-a308-fbbc44047952",
+      "name": "Rejected"
+    },
+    {
+      "parameters": {
+        "mode": "markdownToHtml",
+        "markdown": "={{ $json.data['Edited text'] || $('Run Mira Core').first().json.output }}",
+        "destinationKey": "html",
+        "options": {
+          "literalMidWordUnderscores": true
+        }
+      },
+      "type": "n8n-nodes-base.markdown",
+      "typeVersion": 1,
+      "position": [
+        992,
+        -48
+      ],
+      "id": "acf15ed9-534a-489b-b613-88cda41e4f0c",
+      "name": "To HTML"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Chat Trigger": {
+      "main": [
+        [
+          {
+            "node": "Run Mira Core",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Mira Core": {
+      "main": [
+        [
+          {
+            "node": "Show Draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Show Draft": {
+      "main": [
+        [
+          {
+            "node": "Needs approval?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Needs approval?": {
+      "main": [
+        [
+          {
+            "node": "Email for approval",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Email for approval": {
+      "main": [
+        [
+          {
+            "node": "Rejected?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rejected?": {
+      "main": [
+        [
+          {
+            "node": "Rejected",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "To HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "To HTML": {
+      "main": [
+        [
+          {
+            "node": "Send approved output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "051ee9a0-f3d1-4c85-9b8c-c58aa0599fa6",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ff47d3dfb5903afe64925e25118437137227e67c93aba0b5b2688bd40ccd4c9a"
+  },
+  "nodeGroups": [],
+  "id": "n5ByIeG0uFOFr9Fy",
+  "tags": []
+}

@@ -1,0 +1,626 @@
+{
+  "name": "Mira Eval",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -192,
+        0
+      ],
+      "id": "d14d3838-c01d-4a49-ba16-bee4501a39a6",
+      "name": "Run all tests"
+    },
+    {
+      "parameters": {
+        "jsCode": "const tests = [\n  { testId: 'T1', request: 'Generate a project plan for the AI Adoption Project at ABCDE Ltd. Use the provided project description.' },\n  { testId: 'T2', request: 'Generate a project plan for: \"We want to build a chatbot.\" (vague input)' },\n  { testId: 'T3', request: 'Generate a risk assessment for the AI Adoption Project at ABCDE Ltd. Use the provided project description.' },\n  { testId: 'T4', request: 'Generate a risk assessment for: \"New project starting soon.\" (vague input)' },\n  { testId: 'T5', request: 'Generate a weekly status report using the sample task board data for Sprint 3.' },\n  { testId: 'T6', request: 'Generate a weekly status report for: \"Things are going fine.\" (no task data)' },\n  { testId: 'T7', request: 'What are the top 3 risks for the ABCDE Ltd project based on the risk data?' },\n  { testId: 'T8', request: 'Which tasks are blocked or at risk of missing their deadline based on the task board?' },\n  { testId: 'T9', request: 'Generate a project plan for a 2-week project with no details provided.' },\n  { testId: 'T10', request: 'Summarize the current project status: how many tasks are done, in progress, and to do?' },\n  { testId: 'T11', request: 'What milestones are coming up in the next 2 weeks based on the timeline?' },\n  { testId: 'T12', request: 'Generate a stakeholder update email summarizing Sprint 2 progress.' },\n];\nreturn tests.map(t => ({ json: t }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        48,
+        0
+      ],
+      "id": "8ad8c1d4-96d5-4860-ab6b-bac1469ef4dd",
+      "name": "Tests"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "DvxLaeTVCZByDIKB",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/DvxLaeTVCZByDIKB",
+          "cachedResultName": "Mira Core"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "request": "={{ $json.request }}",
+            "testId": "={{ $json.testId }}",
+            "mode": "eval"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "request",
+              "displayName": "request",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "testId",
+              "displayName": "testId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "mode",
+              "displayName": "mode",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.4,
+      "position": [
+        576,
+        0
+      ],
+      "id": "b09ba33b-696c-4149-b817-a8cd683b721b",
+      "name": "Run Mira Core",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const PHASES = ['Project Initiation','Current State Analysis','Use Case Selection','Pilot Design','Pilot Implementation','Evaluation & Iteration','Full Deployment','Monitoring & Review'];\nconst CATS = ['Data Quality','Integration','Talent','Change Resistance','Ethical','Cost Overruns','Unrealistic Expectations','Model Performance Drift','Security','Vendor Lock-in'];\nconst has = (s, ...w) => w.every(x => s.toLowerCase().includes(x.toLowerCase()));\nconst ids = (s, re) => [...new Set(s.match(re) || [])];\n\nconst checks = {\n  T1: (o, r) => r === 'plan' && PHASES.every(p => has(o, p)),\n  T2: (o, r) => r === 'clarify' && has(o, 'scope') && has(o, 'timeline') && has(o, 'team') && !/Phase 1|Project Initiation/i.test(o),\n  T3: (o, r) => r === 'risk' && CATS.every(c => has(o, c)),\n  T4: (o, r) => r === 'clarify' && !/R0\\d|R10/.test(o),\n  T5: (o, r) => r === 'status' && ['T007','T008','T009','T025'].every(t => o.includes(t)),\n  T6: (o, r) => r === 'clarify' && !/T0\\d\\d/.test(o) && !/\\d+\\s?%/.test(o),\n  T7: (o, r) => r === 'risk' && ids(o, /R(?:0\\d|10)\\b/g).length === 3,\n  T8: (o, r) => o.includes('T024') && /blocked/i.test(o),\n  T9: (o, r) => r === 'clarify' && !/Phase 1|milestone/i.test(o),\n  T10: (o, r) => r === 'status' && /\\b5\\b/.test(o) && /\\b3\\b/.test(o) && /\\b16\\b/.test(o) && /\\b1\\b/.test(o) && /\\b25\\b/.test(o),\n  T11: (o, r) => {\n    const w = o.split(/next milestone|after this window|beyond (?:this|the) window/i)[0];\n    return r === 'milestones' && has(w, 'Current systems audit report') && has(w, 'Gap analysis report') && !/2026-05-05/.test(w);\n  },\n  T12: (o, r) => ['T004','T005','T006'].every(t => o.includes(t)) && !/T0(0[7-9]|1\\d|2\\d)/.test(o)\n};\n\nreturn $input.all().map(i => {\n  const d = i.json;\n  const o = d.output || '';\n  const badTask = (o.match(/T\\d{3}/g) || []).some(t => Number(t.slice(1)) > 25);\n  const badRisk = (o.match(/\\bR\\d{2}\\b/g) || []).some(r => Number(r.slice(1)) > 10);\n  const hallucination = badTask || badRisk;\n  const passed = !!checks[d.testId]?.(o, d.route) && !hallucination;\n  return { json: {\n    testId: d.testId || 'ERROR (run failed)',\n    passed,\n    hallucination,\n    route: d.route || 'error',\n    model: d.model,\n    latencyMs: d.latencyMs,\n    promptTokens: d.usage?.prompt_tokens,\n    completionTokens: d.usage?.completion_tokens,\n    traceId: d.traceId,\n    output: o.slice(0, 300),\n    fullOutput: o\n  }};\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        704,
+        -128
+      ],
+      "id": "e0510e77-61d7-4dd9-a9af-69e8c8faa1fb",
+      "name": "Score"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        320,
+        -112
+      ],
+      "id": "f2849050-2947-4ff8-88f4-995f93ac2194",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "amount": 30
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        784,
+        112
+      ],
+      "id": "5cc9948a-f7e9-47c8-84d5-1a60fab4ba02",
+      "name": "Wait",
+      "webhookId": "REPLACE_WITH_YOUR_WEBHOOK_ID"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6e55a177-90ae-4e3d-a592-59738f3ab34d",
+              "name": "run_label",
+              "value": "Run 5 - gpt-4o-mini - stricter judge",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1360,
+        -128
+      ],
+      "id": "4c944be1-c1ef-4844-a76d-954eda346020",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "REPLACE_WITH_YOUR_GOOGLE_SHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Mira Eval Results",
+          "cachedResultUrl": "REPLACE_WITH_YOUR_GOOGLE_SHEET_ID"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "REPLACE_WITH_YOUR_GOOGLE_SHEET_ID"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "run_label",
+              "displayName": "run_label",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "testId",
+              "displayName": "testId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "passed",
+              "displayName": "passed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "hallucination",
+              "displayName": "hallucination",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "route",
+              "displayName": "route",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "model",
+              "displayName": "model",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "latencyMs",
+              "displayName": "latencyMs",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "promptTokens",
+              "displayName": "promptTokens",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "completionTokens",
+              "displayName": "completionTokens",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "traceId",
+              "displayName": "traceId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "output",
+              "displayName": "output",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "fullOutput",
+              "displayName": "fullOutput",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "riskRelevanceScore",
+              "displayName": "riskRelevanceScore",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "riskRelevancePass",
+              "displayName": "riskRelevancePass",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "riskRelevanceReason",
+              "displayName": "riskRelevanceReason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "judgeModel",
+              "displayName": "judgeModel",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "judgeTokens",
+              "displayName": "judgeTokens",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1520,
+        -128
+      ],
+      "id": "4856898a-2ebe-4ef5-9cdf-713938b04cb9",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "ZzTAw8TSyy7eHS5W",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const REFERENCE = `R01 Data Quality & Availability: incomplete, inconsistent or unstructured data. Impact: poor model performance, inaccurate outcomes. Mitigation: early data audits, robust data governance, data engineering.\nR02 Integration Issues: difficulty integrating AI with legacy systems. Impact: delays in deployment, operational disruptions. Mitigation: integration roadmap, APIs/middleware, dedicated DevOps support.\nR03 Talent & Skills Gap: lack of internal AI/ML expertise. Impact: overreliance on external vendors, slow progress. Mitigation: staff training, specialised hires, partnerships.\nR04 Change Resistance: employees resist AI-driven workflows. Impact: low adoption, reduced ROI. Mitigation: change management, early engagement, clear communication of benefits.\nR05 Ethical & Legal Concerns: biased models, privacy violations, regulatory non-compliance. Impact: legal repercussions, reputational damage. Mitigation: involve legal early, fairness checks, data privacy frameworks.\nR06 Cost Overruns: underestimation of development, infrastructure or vendor costs. Impact: budget constraints, project delays. Mitigation: realistic budget, contingency funds, regular cost tracking.\nR07 Unrealistic Expectations: stakeholders expect immediate ROI. Impact: disillusionment, loss of support. Mitigation: align expectations, show quick wins, report incremental progress.\nR08 Model Performance Drift: models lose accuracy as data changes. Impact: incorrect decisions, trust erosion. Mitigation: regular retraining, monitoring dashboards, feedback loops.\nR09 Security Vulnerabilities: models expose sensitive systems or face adversarial attacks. Impact: data breaches, operational risks. Mitigation: AI security best practices, regular penetration testing.\nR10 Vendor Lock-in: overdependence on one AI tool or platform. Impact: flexibility loss, future switching costs. Mitigation: open standards, flexible vendor terms, portability.`;\n\nconst system = `ROLE\nYou are a strict evaluator of risk relevance for Mira, a project assistant for the AI Adoption Project at ABCDE Ltd., a logistics and supply chain company.\n\nINPUT\nA request, the reference risk register (R01 to R10), and Mira's answer.\n\nOUTPUT\nReturn only JSON: {\"relevance_score\": <integer 1 to 5>, \"unsupported_items\": [<short strings>], \"reason\": \"<one or two sentences>\"}\n\nRULES\n1. Score how relevant the risks and mitigations in the answer are to this project and to the reference register.\n2. 5 = every risk is in the register or clearly specific to logistics or AI adoption, and every mitigation fits its risk.\n3. 4 = relevant overall, with only minor generic wording.\n4. 3 = several generic or weakly matched items.\n5. 2 or lower = includes unrelated risks (for example office relocation or staff holidays), invented risks presented as register items, or mitigations that do not fit the risk.\n6. List any unsupported item in unsupported_items. Use an empty list if there are none.\n7. Judge only relevance. Do not judge style or length.\n8. If any risk or risk ID in the answer is not in the register, or is unrelated to logistics or AI adoption, the score cannot exceed 2.`;\n\nconst REQ = {\n  T3: 'Generate a risk assessment for the AI Adoption Project at ABCDE Ltd.',\n  T7: 'What are the top 3 risks for the ABCDE Ltd project based on the risk data?'\n};\n\nreturn $input.all().map(i => i.json).filter(r => REQ[r.testId]).map(r => ({ json: {\n  testId: r.testId,\n  model:    'gpt-4o-mini',\n  jsonMode: true,\n  t0: Date.now(),\n  system,\n    user: `REFERENCE RISK REGISTER\\n${REFERENCE}\\n\\nREQUEST\\n${REQ[r.testId]}\\n\\nMIRA ANSWER\\n${r.fullOutput}`\n}}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        864,
+        -128
+      ],
+      "id": "dad057fa-527f-46b9-bb6f-a0cfd2d26efa",
+      "name": "Judge Input"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "8q6hfI2tcPoQwkCH",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/8q6hfI2tcPoQwkCH",
+          "cachedResultName": "Model Call"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "model": "={{ $json.model }}",
+            "system": "={{ $json.system }}",
+            "user": "={{ $json.user }}",
+            "jsonMode": "={{ $json.jsonMode }}",
+            "t0": "={{ $json.t0 }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "model",
+              "displayName": "model",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "system",
+              "displayName": "system",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "user",
+              "displayName": "user",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "jsonMode",
+              "displayName": "jsonMode",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "boolean",
+              "removed": false
+            },
+            {
+              "id": "t0",
+              "displayName": "t0",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.4,
+      "position": [
+        1024,
+        -128
+      ],
+      "id": "438cc0dc-f2c0-4ad1-9c5c-88fcd99683b9",
+      "name": "Judge Call"
+    },
+    {
+      "parameters": {
+        "jsCode": "const scores = $('Score').all().map(i => i.json);\nconst inputs = $('Judge Input').all().map(i => i.json);\nconst judged = {};\n\n$input.all().forEach((it, idx) => {\n  let j = {};\n  try { j = JSON.parse(it.json.text); } catch (e) { j = {}; }\n  const s = Number(j.relevance_score);\n  const unsupported = Array.isArray(j.unsupported_items) ? j.unsupported_items : [];\n  judged[inputs[idx].testId] = {\n    riskRelevanceScore: s || null,\n    riskRelevancePass: s >= 4 && unsupported.length === 0,\n    riskRelevanceReason: j.reason || 'judge returned no valid JSON',\n    unsupportedItems: unsupported.join('; '),\n    judgeModel: it.json.model,\n    judgeTokens: it.json.usage?.total_tokens\n  };\n});\n\nreturn scores.map(r => ({ json: {\n  ...r,\n  ...(judged[r.testId] || { riskRelevanceScore: 'n/a', riskRelevancePass: 'n/a', riskRelevanceReason: '', unsupportedItems: '', judgeModel: '', judgeTokens: '' })\n}}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1184,
+        -128
+      ],
+      "id": "1b436b2c-a5cb-46e6-9963-6addb6207315",
+      "name": "Attach Judge"
+    }
+  ],
+  "pinData": {
+    "Run all tests": [
+      {
+        "json": {},
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Run all tests": {
+      "main": [
+        [
+          {
+            "node": "Tests",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tests": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Mira Core": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Score",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Run Mira Core",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Score": {
+      "main": [
+        [
+          {
+            "node": "Judge Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Judge Input": {
+      "main": [
+        [
+          {
+            "node": "Judge Call",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Judge Call": {
+      "main": [
+        [
+          {
+            "node": "Attach Judge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Attach Judge": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "21f8b22f-89a3-4ad7-b4af-2a8f5102586a",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ff47d3dfb5903afe64925e25118437137227e67c93aba0b5b2688bd40ccd4c9a"
+  },
+  "nodeGroups": [],
+  "id": "2Ka9OZ08hcVK9joy",
+  "tags": []
+}
