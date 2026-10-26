@@ -32,11 +32,11 @@ data/         the four project input files and the 12 baseline test inputs
 
 | File | Purpose |
 | --- | --- |
-| `workflows/mira-chat.json` | Chat trigger, approval email (Gmail), approved send |
-| `workflows/mira-core.json` | Loads the input files, classifies the request, routes it to a specialist, builds the trace and sends it to Langfuse |
-| `workflows/model-call.json` | Shared sub-workflow that calls the model (gpt-4o-mini) and returns text, token counts and latency |
-| `workflows/mira-eval.json` | Runs the 12 baseline tests through Mira Core, scores them, and writes results to a Google Sheet |
-| `workflows/mira-judge-calibration.json` | Compares the risk-relevance judge with human ratings |
+| `workflows/Mira-Chat-Public.json` | Chat trigger, approval email (Gmail), approved send |
+| `workflows/Mira-Core-Public.json` | Loads the input files, classifies the request, routes it to a specialist, builds the trace and sends it to Langfuse |
+| `workflows/Mira-Call-Public.json` | Shared sub-workflow that calls the model (gpt-4o-mini) and returns text, token counts and latency |
+| `workflows/Mira-Eval-Public.json` | Runs the 12 baseline tests through Mira Core, scores them, and writes results to a Google Sheet |
+| `workflows/Mira-Judge-Calibration-Public.json` | Compares the risk-relevance judge with human ratings |
 
 ## Setup
 
