@@ -1,0 +1,435 @@
+{
+  "name": "Mira Weekly",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "DvxLaeTVCZByDIKB",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/DvxLaeTVCZByDIKB",
+          "cachedResultName": "Mira Core"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "request": "={{ $json.request }}",
+            "mode": "chat",
+            "testId": "={{ $json.testId }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "request",
+              "displayName": "request",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "testId",
+              "displayName": "testId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "mode",
+              "displayName": "mode",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.4,
+      "position": [
+        -96,
+        0
+      ],
+      "id": "04eafa8b-c707-430b-b955-134fa3fceb25",
+      "name": "Run Mira Core"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "bfa48a27-9494-4254-81be-7c5143aeb3f1",
+              "leftValue": "={{ $('Run Mira Core').first().json.requiresApproval }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "a85f4d41-6f18-4111-b230-3d0812edae81",
+              "leftValue": "",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        304,
+        0
+      ],
+      "id": "1eb5d1a0-c5d6-4a65-b232-b16b5c53dbbd",
+      "name": "Needs approval?"
+    },
+    {
+      "parameters": {
+        "operation": "sendAndWait",
+        "sendTo": "APPROVER_EMAIL@example.com",
+        "subject": "Mira draft for approval",
+        "message": "={{ $('Run Mira Core').first().json.output }}",
+        "responseType": "customForm",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Decision",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Approve"
+                  },
+                  {
+                    "option": "Reject"
+                  },
+                  {
+                    "option": "Edit and approve"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Reason"
+            },
+            {
+              "fieldLabel": "Edited text",
+              "fieldType": "textarea"
+            }
+          ]
+        },
+        "options": {
+          "limitWaitTime": {
+            "values": {
+              "resumeAmount": 24
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        528,
+        -96
+      ],
+      "id": "093b881b-88db-44e3-bc29-657e8d116697",
+      "name": "Email for approval",
+      "webhookId": "eada94b2-5454-4414-8f39-0a93b657ff85",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "V3Ot9NYA4RpYiM0N",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "43c5fc5c-43d2-4bd3-a772-41816867c11b",
+              "leftValue": "={{ $json.data.Decision }}",
+              "rightValue": "Reject",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        752,
+        -96
+      ],
+      "id": "0abba322-4bff-4c49-a0e9-e3d8a33407ed",
+      "name": "Rejected?"
+    },
+    {
+      "parameters": {
+        "sendTo": "YOUR_EMAIL@example.com",
+        "subject": "Mira approved output",
+        "message": "={{ $('To HTML').first().json.html }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1216,
+        -32
+      ],
+      "id": "d119f86f-fc37-466d-8594-2c9ae485164d",
+      "name": "Send approved output",
+      "webhookId": "45f5070a-4bfe-41f3-8acf-a1921a72b69a",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "V3Ot9NYA4RpYiM0N",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c0c9e1a9-9e29-4567-aa7f-be0a082318dd",
+              "name": "decision",
+              "value": "={{ $json.data.Decision }}",
+              "type": "string"
+            },
+            {
+              "id": "38dcf0f6-1b21-4bde-a748-fa65202234fe",
+              "name": "reason",
+              "value": "={{ $json.data.Reason }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        1200,
+        -192
+      ],
+      "id": "27602ce3-8e12-45b9-9baf-f7c80a3ee35d",
+      "name": "Rejected"
+    },
+    {
+      "parameters": {
+        "mode": "markdownToHtml",
+        "markdown": "={{ $json.data['Edited text'] || $('Run Mira Core').first().json.output }}",
+        "destinationKey": "html",
+        "options": {
+          "literalMidWordUnderscores": true
+        }
+      },
+      "type": "n8n-nodes-base.markdown",
+      "typeVersion": 1,
+      "position": [
+        992,
+        -48
+      ],
+      "id": "257594b1-c9ab-448a-826a-8c572c104563",
+      "name": "To HTML"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                1
+              ],
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -464,
+        0
+      ],
+      "id": "c4bd2369-7031-4eeb-a014-ee981a4cf66b",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "18af3d65-3c2c-4e60-8921-2cc0b8105993",
+              "name": "request",
+              "value": "Generate a weekly status report for the current sprint",
+              "type": "string"
+            },
+            {
+              "id": "2bab09c5-dd05-4f12-a48c-67532aabf37b",
+              "name": "testId",
+              "value": "Weekly",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        -320,
+        0
+      ],
+      "id": "a055cad7-d80e-41d1-beaa-1645775293cb",
+      "name": "Edit Fields"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Run Mira Core": {
+      "main": [
+        [
+          {
+            "node": "Needs approval?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Needs approval?": {
+      "main": [
+        [
+          {
+            "node": "Email for approval",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Email for approval": {
+      "main": [
+        [
+          {
+            "node": "Rejected?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rejected?": {
+      "main": [
+        [
+          {
+            "node": "Rejected",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "To HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "To HTML": {
+      "main": [
+        [
+          {
+            "node": "Send approved output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Run Mira Core",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "timezone": "America/Los_Angeles",
+    "callerPolicy": "workflowsFromSameOwner",
+    "executionTimeout": -1,
+    "availableInMCP": false
+  },
+  "versionId": "2a956a8c-74ac-4e10-9d48-756193225d7a",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "ff47d3dfb5903afe64925e25118437137227e67c93aba0b5b2688bd40ccd4c9a"
+  },
+  "nodeGroups": [],
+  "id": "YQ9Au9FgbbG40m6a",
+  "tags": []
+}
